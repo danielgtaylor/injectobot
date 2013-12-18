@@ -39,5 +39,11 @@ html
 
         script(src="//code.jquery.com/jquery-1.10.1.min.js")
         script(src="//netdna.bootstrapcdn.com/bootstrap/3.0.2/js/bootstrap.min.js")
+        script.
+            var host = "#{host}"
+                port = #{port};
         :coffee
             $('table').addClass 'table'
+
+            $('code').each (i, item) ->
+                $(item).html($(item).html().replace /localhost:(<span class="number">)?3000(<\/span>)?/gmi, "#{host}:#{port}")

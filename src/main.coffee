@@ -99,7 +99,9 @@ app.set 'views', __dirname
 app.set 'view engine', 'jade'
 
 app.get '/', (req, res) ->
-    res.render 'docs', {}
+    res.render 'docs',
+        host: os.hostname()
+        port: options.listen
 
 app.get '/test', (req, res) ->
     handleIrcMessage 'api', '#test', req.query.message
