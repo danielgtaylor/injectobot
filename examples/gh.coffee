@@ -1,5 +1,7 @@
 GITHUB_TOKEN = 'your-github-oauth-token'
 
+latest = {}
+
 if not fs.existsSync '/config.json'
     fs.writeFileSync '/config.json', '{}'
 
@@ -27,7 +29,7 @@ bot.command 'help', (from, to, args) ->
                                 'github unwatch <project>: stop watching a project'
 
 # Process events for one project and report to one room
-processProject = (project, room, lastCall, done) ->
+processProject = (project, room, done) ->
     options =
         url: "https://api.github.com/repos/#{project}/events"
         headers:
@@ -40,8 +42,11 @@ processProject = (project, room, lastCall, done) ->
             bot.say room, err.toString()
             return done(err)
 
+        latest[project] ?= moment(body[0].created_at)
+        console.log "Checking #{project} for #{room}. #{latest[project].format('YYYY-MM-DD, HH:mm')} vs. #{moment(body[0].created_at).format('YYYY-MM-DD, HH:mm')}"
+
         for item in body
-            if moment(item.created_at).isAfter lastCall
+            if moment(item.created_at).isAfter latest[project]
                 # http://developer.github.com/v3/activity/events/types/
                 switch item.type
                     when 'IssuesEvent'
@@ -51,21 +56,19 @@ processProject = (project, room, lastCall, done) ->
                     when 'PullRequestEvent'
                         bot.say room, "#{item.actor.login} #{item.payload.action} pull request '#{item.payload.pull_request.title}' #{item.payload.pull_request.html_url}"
                     when 'PullRequestReviewCommentEvent'
-                        bot.say room, "#{item.actor.login} commented on a pull request #{item.payload.html_url}"
+                        bot.say room, "#{item.actor.login} commented on a pull request #{item.payload.comment.html_url}"
                     when 'PushEvent'
                         bot.say room, "#{item.actor.login} pushed #{item.payload.size} commits to #{item.payload.ref}"
                     when 'ReleaseEvent'
                         bot.say room, "#{item.actor.login} released #{item.payload.tag_name}"
 
+        latest[project] = moment(body[0].created_at)
+
         done()
 
-bot.interval 1000 * 60 * 3, ->
-    @lastCall ?= moment()
-
+bot.interval 1000 * 60 * 1, ->
     process = (project, done) ->
-        processProject project, config[project], @lastCall, done
+        processProject project, config[project], done
 
     async.each Object.keys(config), process, (err) ->
         # Errors are handled in the processProject function above
-
-    @lastCall = moment()
