@@ -107,6 +107,10 @@ app.get '/test', (req, res) ->
     handleIrcMessage 'api', '#test', req.query.message
     res.end()
 
+# Get a list of all plugins
+app.get '/plugins', (req, res) ->
+    res.send (name for name of plugins)
+
 # Read a plugin
 app.get '/plugins/:name', (req, res) ->
     type = req.query.type or 'js'

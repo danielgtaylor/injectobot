@@ -128,6 +128,18 @@ Get [HTTPie](https://github.com/jkbr/httpie) via `pip install --upgrade https://
 http put localhost:3000/plugins/test type=js script=@myscript.js
 ```
 
+## Listing All Plugins
+You can list all installed plugin names (including extension type) with an `HTTP GET` call to the server. A list of strings is returned.
+
+```http
+GET http://localhost:3000/plugins HTTP/1.1
+```
+
+#### HTTPie Example
+```bash
+http localhost:3000/plugins
+```
+
 ## Reading a Plugin
 You can read a plugin's source code, minus any secrets, with an `HTTP GET` call to the server.
 
@@ -155,7 +167,7 @@ DELETE http://localhost:3000/plugins/:name HTTP/1.1
 
 #### HTTPie Example
 ```bash
-http delete localhost:3000/plugins/test
+http delete localhost:3000/plugins/test type==coffee
 ```
 
 ## Advanced Usage
