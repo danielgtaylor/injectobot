@@ -112,7 +112,11 @@ app.get '/plugins/:name', (req, res) ->
         when 'js' then 'text/javascript'
         when 'coffee' then 'text/coffeescript'
 
-    script = fs.readFileSync "#{__dirname}/plugins/#{req.params.name}.#{type}", 'utf-8'
+    filename = "#{__dirname}/plugins/#{req.params.name}.#{type}"
+
+    if not fs.fileExistsSync filename then return res.send 404
+
+    script = fs.readFileSync filename, 'utf-8'
 
     # Remove secrets
     script = script.replace /((TOKEN|SECRET)\s*=\s*)(.*)$/gm, "$1'SECRET REMOVED'"
