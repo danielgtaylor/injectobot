@@ -5,6 +5,9 @@
   "bin": {
     "injectobot": "./bin/injectobot.js"
   },
+  "peerDependencies": {
+    "coffee-script": "~1.6.3"
+  },
   "dependencies": {
     "cheerio": "~0.12.4",
     "coffee-script": "~1.6.3",
@@ -29,7 +32,9 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
-    "irc"
+    "irc",
+    "bot",
+    "plugin"
   ],
   "author": "Daniel G. Taylor",
   "license": "MIT"
