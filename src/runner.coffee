@@ -13,10 +13,11 @@ npm = require 'npm'
 q = require 'q'
 request = require 'request'
 
-name = process.argv[3]
+filename = process.argv[3]
+pluginName = filename.split('.')[0...-1].join('.')
 
 # Load the script
-script = fs.readFileSync "#{__dirname}/plugins/#{name}", 'utf-8'
+script = fs.readFileSync "#{__dirname}/plugins/#{filename}", 'utf-8'
 
 # Setup a basic API
 bot =
@@ -60,7 +61,7 @@ process.on 'message', (data) ->
 
 # Report failures back to the master process
 process.on 'uncaughtException', (err) ->
-    process.send action: 'error', name: name, stack: err.stack
+    process.send action: 'error', name: pluginName, stack: err.stack
     process.exit()
 
 # DNS lookup hack for chroot, see https://github.com/joyent/node/issues/3399
@@ -68,12 +69,12 @@ dns.lookup = (domain, family, callback) ->
     dns.resolve4 domain, callback or family
 
 # Drop privs and force a filesystem jail
-chroot "#{__dirname}/jails/#{name}", process.argv[4]
+chroot "#{__dirname}/jails/#{pluginName}", process.argv[4]
 
 # Run the plugin! We use eval rather than vm.runInThisContext
 # to provide access to the current locals without sandboxing
 # the script.
-if /\.coffee$/.exec name
+if /\.coffee$/.exec filename
     script = coffee.compile script, bare: true
 
 eval script

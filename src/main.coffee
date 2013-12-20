@@ -36,9 +36,10 @@ handlePluginMessage = (data) ->
             client.say data.to, data.message
 
 # Load a plugin, start the child process, etc
-loadPlugin = (name) ->
-    console.log "Loading plugin #{name}"
-    child = child_process.fork "#{__dirname}/runner.coffee", [USERNAME, name, options.user]
+loadPlugin = (name, filename) ->
+    console.log "Loading plugin #{name} from #{filename}"
+    child = child_process.fork "#{__dirname}/runner.coffee", [USERNAME, filename, options.user]
+    child.filename = filename
     child.on 'message', handlePluginMessage
     child.on 'error', ->
         console.log "#{name} plugin error!"
@@ -78,8 +79,8 @@ else
             console.log "@#{to}: #{msg}"
 
 # Load all plugins
-for name in fs.readdirSync("#{__dirname}/plugins")
-    loadPlugin name
+for filename in fs.readdirSync("#{__dirname}/plugins")
+    loadPlugin filename.split('.')[0...-1].join('.'), filename
 
 # Setup marked with code highlighting and smartypants
 marked.setOptions
@@ -93,8 +94,23 @@ marked.setOptions
 
 # API server setup
 app = express()
-app.use express.limit('5mb')
-app.use express.json()
+
+# Middleware to limit upload size and save request body
+app.use (req, res, next) ->
+    len = 0
+    raw = ''
+    req.setEncoding 'utf-8'
+    req.on 'data', (chunk) ->
+        # Length check - limit to 5mb max upload
+        len += chunk.length
+        if len > 5242880
+            req.destroy()
+        raw += chunk
+    req.on 'end', ->
+        req.body = raw
+        next()
+
+# Setup template engine for docs
 app.set 'views', __dirname
 app.set 'view engine', 'jade'
 
@@ -113,14 +129,19 @@ app.get '/plugins', (req, res) ->
 
 # Read a plugin
 app.get '/plugins/:name', (req, res) ->
-    type = req.query.type or 'js'
-    contentType = switch type
-        when 'js' then 'text/javascript'
-        when 'coffee' then 'text/coffeescript'
+    name = req.params.name
+    filename = null
 
-    filename = "#{__dirname}/plugins/#{req.params.name}.#{type}"
+    for ext in ['js', 'coffee']
+        path = "#{__dirname}/plugins/#{name}.#{ext}"
+        if fs.existsSync path
+            filename = path
+            contentType = switch ext
+                when 'js' then 'application/javascript'
+                when 'coffee' then 'application/coffeescript'
+            break
 
-    if not fs.fileExistsSync filename then return res.send 404
+    if not filename then return res.send 404
 
     script = fs.readFileSync filename, 'utf-8'
 
@@ -132,41 +153,51 @@ app.get '/plugins/:name', (req, res) ->
 
 # Upload a new plugin
 app.put '/plugins/:name', (req, res) ->
-    script = req.body.script
-    type = req.body.type or 'js'
+    name = req.params.name
+    script = req.body
+    type = switch req.header 'content-type'
+        when 'application/javascript' then 'js'
+        when 'application/coffeescript' then 'coffee'
+
+    if not type then return res.send 400, 'Invalid content type! Must be application/javascript or application/coffeescript!'
 
     if not script
         return res.send 400, 'Script cannot be empty!'
 
-    if type not in ['js', 'coffee']
-        return res.send 400, "Unsupported script type #{type}!"
+    # Remove existing scripts
+    if plugins[name]
+        plugins[name].kill()
+        delete plugins[name]
 
-    filename = "#{req.params.name}.#{type}"
+    for ext in ['js', 'coffee']
+        path = "#{__dirname}/plugins/#{name}.#{ext}"
+        if fs.existsSync path then fs.unlinkSync path
+
+    filename = "#{name}.#{type}"
 
     # Save the script and setup the chroot jail
     fs.writeFileSync "#{__dirname}/plugins/#{filename}", script
 
-    if not fs.existsSync "#{__dirname}/jails/#{filename}"
-        fs.mkdirSync "#{__dirname}/jails/#{filename}"
+    if not fs.existsSync "#{__dirname}/jails/#{name}"
+        fs.mkdirSync "#{__dirname}/jails/#{name}"
 
-    fs.chmodSync "#{__dirname}/jails/#{filename}", '777'
+    fs.chmodSync "#{__dirname}/jails/#{name}", '777'
 
     # Run the plugin!
-    if plugins[filename]
-        plugins[filename].kill()
-        delete plugins[filename]
-    loadPlugin filename
+    loadPlugin name, filename
 
     res.send 'ok'
 
 # Delete and unload a plugin
 app.delete '/plugins/:name', (req, res) ->
-    type = req.body.type or 'js'
-    filename = "#{req.params.name}.#{type}"
+    name = req.params.name
 
-    fs.unlinkSync "#{__dirname}/plugins/#{filename}"
-    plugins[filename].kill()
-    delete plugins[filename]
+    for ext in ['js', 'coffee']
+        path = "#{__dirname}/plugins/#{name}.#{ext}"
+        if fs.existsSync path then fs.unlinkSync path
+
+    plugins[name].kill()
+    delete plugins[name]
 
     res.status(204).end()
 

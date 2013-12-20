@@ -16,6 +16,8 @@ The bot can be installed via npm (may require `sudo`):
 npm install -g injectobot
 ```
 
+Examples throughout this document use [HTTPie](https://github.com/jkbr/httpie), which you can install via `pip install httpie`.
+
 Once installed, it can be run via the `injectobot` command, which requires `sudo` in order to create the plugin chroot jails. Unless a `--host` is passed, it will not connect to an IRC channel and instead will dump all messages to the terminal, which is useful for testing plugins locally.
 
 ```bash
@@ -100,32 +102,32 @@ bot.reply from, to, 'Hello, world!'
 ```
 
 ## Uploading a Plugin
-You can upload a plugin by doing an `HTTP PUT` to this server. __Warning__: there are currently zero access controls. It may be a good idea to prefix your plugins with a unique name to prevent clashes with other team members.
+You can upload a plugin by doing an `HTTP PUT` to this server. You must set a `Content-Type` header and the body of the request must be the plugin text as utf-8. __Warning__: there are currently zero access controls. It may be a good idea to prefix your plugins with a unique name to prevent clashes with other team members.
 
 If a plugin requires a secret such as an API token then it should be set in a variable that ends in `TOKEN` or `SECRET`, for example `MY_TOKEN = 'some-secret-string'`. When reading plugins this string will be replaced to prevent leaking of secrets.
 
 ```http
 PUT http://localhost:3000/plugins/:name HTTP/1.1
-Content-Type: application/json
+Content-Type: application/coffeescript
 
-{
-    "type": "coffee",
-    "script": "bot.command 'echo', ..."
-}
+
+bot.command 'echo', (from, to, args) ->
+    bot.reply from, to, args
 ```
 
 ### Parameters
-| Name     | Description                              | Default |
-| -------- | ---------------------------------------- | ------- |
-| `name`   | The plugin name (in the URL)             | -       |
-| `type`   | The script type, either `js` or `coffee` | `js`    |
-| `script` | The script text                          | -       |
+| Name   | Description                  |
+| ------ | ---------------------------- |
+| `name` | The plugin name (in the URL) |
+
+### Headers
+| Name           | Description                                                   |
+| -------------- | ------------------------------------------------------------- |
+| `Content-Type` | Either `application/javascript` or `application/coffeescript` |
 
 #### HTTPie Example
-Get [HTTPie](https://github.com/jkbr/httpie) via `pip install --upgrade https://github.com/jkbr/httpie/tarball/master`. You need at least version `0.8` to support the `=@` syntax below.
-
 ```bash
-http put localhost:3000/plugins/test type=js script=@myscript.js
+http put localhost:3000/plugins/test Content-Type:application/javascript <myscript.js
 ```
 
 ## Listing All Plugins
@@ -144,18 +146,17 @@ http localhost:3000/plugins
 You can read a plugin's source code, minus any secrets, with an `HTTP GET` call to the server.
 
 ```http
-GET http://localhost:3000/plugins/:name?type=:type HTTP/1.1
+GET http://localhost:3000/plugins/:name HTTP/1.1
 ```
 
 ### Parameters
-| Name     | Description                              | Default |
-| -------- | ---------------------------------------- | ------- |
-| `name`   | The plugin name (in the URL)             | -       |
-| `type`   | The script type, either `js` or `coffee` | `js`    |
+| Name     | Description                  |
+| -------- | ---------------------------- |
+| `name`   | The plugin name (in the URL) |
 
 #### HTTPie Example
 ```bash
-http localhost:3000/plugins/test type==js
+http localhost:3000/plugins/test
 ```
 
 ## Deleting a Plugin
@@ -167,7 +168,7 @@ DELETE http://localhost:3000/plugins/:name HTTP/1.1
 
 #### HTTPie Example
 ```bash
-http delete localhost:3000/plugins/test type==coffee
+http delete localhost:3000/plugins/test
 ```
 
 ## Advanced Usage
@@ -178,6 +179,7 @@ This bot has very little security built-in, and is intended for small teams of d
 
 * Limit who can PUT/DELETE via `iptables` whitelists
 * Require a password as an argument to plugin commands
+* Modify commands to require channel op status
 
 ### Custom Dependencies
 Built-in modules are described at the top of this document, but sometimes there may be a module you wish to use that isn't included. You can install custom dependencies for your script programmatically via the `npm` module. __Note__: only pure javascript modules are supported. C/C++ extensions are prohibited because they could contain inline assembly and potentially wreak havoc. Here is an example:
