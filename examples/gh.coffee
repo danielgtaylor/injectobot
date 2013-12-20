@@ -45,22 +45,24 @@ processProject = (project, room, done) ->
         latest[project] ?= moment(body[0].created_at)
         console.log "Checking #{project} for #{room}. #{latest[project].format('YYYY-MM-DD, HH:mm')} vs. #{moment(body[0].created_at).format('YYYY-MM-DD, HH:mm')}"
 
+        # Say with muted colors
+        say = (to, msg) ->
+            bot.say to, "\u000314#{msg}\u000f"
+
         for item in body
             if moment(item.created_at).isAfter latest[project]
                 # http://developer.github.com/v3/activity/events/types/
                 switch item.type
                     when 'IssuesEvent'
-                        bot.say room, "#{item.actor.login} #{item.payload.action} issue '#{item.payload.issue.title}' #{item.payload.issue.html_url}"
+                        say room, "#{item.actor.login} #{item.payload.action} issue '#{item.payload.issue.title}' #{item.payload.issue.html_url}"
                     when 'IssueCommentEvent'
-                        bot.say room, "#{item.actor.login} commented on '#{item.payload.issue.title}' #{item.payload.issue.html_url}"
+                        say room, "#{item.actor.login} commented on '#{item.payload.issue.title}' #{item.payload.issue.html_url}"
                     when 'PullRequestEvent'
-                        bot.say room, "#{item.actor.login} #{item.payload.action} pull request '#{item.payload.pull_request.title}' #{item.payload.pull_request.html_url}"
+                        say room, "#{item.actor.login} #{item.payload.action} pull request '#{item.payload.pull_request.title}' #{item.payload.pull_request.html_url}"
                     when 'PullRequestReviewCommentEvent'
-                        bot.say room, "#{item.actor.login} commented on a pull request #{item.payload.comment.html_url}"
-                    when 'PushEvent'
-                        bot.say room, "#{item.actor.login} pushed #{item.payload.size} commits to #{item.payload.ref}"
+                        say room, "#{item.actor.login} commented on a pull request #{item.payload.comment.html_url}"
                     when 'ReleaseEvent'
-                        bot.say room, "#{item.actor.login} released #{item.payload.tag_name}"
+                        say room, "#{item.actor.login} released #{item.payload.tag_name}"
 
         latest[project] = moment(body[0].created_at)
 
