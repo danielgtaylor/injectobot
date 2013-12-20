@@ -175,8 +175,14 @@ app.put '/plugins/:name', (req, res) ->
 
     filename = "#{name}.#{type}"
 
+    if not fs.existsSync "#{__dirname}/plugins"
+        fs.mkdirSync "#{__dirname}/plugins"
+
     # Save the script and setup the chroot jail
     fs.writeFileSync "#{__dirname}/plugins/#{filename}", script
+
+    if not fs.existsSync "#{__dirname}/jails"
+        fs.mkdirSync "#{__dirname}/jails"
 
     if not fs.existsSync "#{__dirname}/jails/#{name}"
         fs.mkdirSync "#{__dirname}/jails/#{name}"
