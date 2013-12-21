@@ -34,7 +34,12 @@
   "keywords": [
     "irc",
     "bot",
-    "plugin"
+    "plugin",
+    "messaging",
+    "chat",
+    "api",
+    "developer",
+    "team"
   ],
   "author": "Daniel G. Taylor",
   "license": "MIT"
